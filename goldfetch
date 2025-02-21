@@ -1,0 +1,50 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import asyncio
+from telegram import Bot
+
+async def get_gold_price():
+    url = "https://wallgold.ir/"
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--ignore-certificate-errors")
+    
+    service = Service(executable_path='/usr/lib/chromium-browser/chromedriver')
+    driver = None
+    try:
+        driver = webdriver.Chrome(service=service, options=options)
+        driver.get(url)
+        price_element = driver.find_element(By.CSS_SELECTOR, 'span[data-sentry-element="NumberField"]')
+        gold_price = float(price_element.text.strip().replace(',', ''))
+        driver.quit()
+        print(f"Scraped gold price: {gold_price} Toman")
+        return gold_price
+    except Exception as e:
+        print(f"Error with Selenium: {e}")
+        if driver:
+            driver.quit()
+        return None
+
+async def send_to_telegram(gold_price):
+    token = '8072246901:AAHxQJvqzUr7RXTlG0t2cLvnRilOMY-8pEg'
+    channel_id = '@tala_jun'
+    bot = Bot(token)
+    formatted_price = "{:,.0f}".format(gold_price)
+    message = f"Current Gold Price (per gram): {formatted_price} Toman"
+    try:
+        await bot.send_message(chat_id=channel_id, text=message)
+        print(f"Sent gold price: {gold_price} Toman")
+    except Exception as e:
+        print(f"Telegram error: {e}")
+
+async def main():
+    gold_price = await get_gold_price()
+    if gold_price:
+        await send_to_telegram(gold_price)
+
+if __name__ == '__main__':
+    asyncio.run(main())
